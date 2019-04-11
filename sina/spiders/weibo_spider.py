@@ -21,7 +21,7 @@ class WeiboSpider(RedisSpider):
         'CONCURRENT_REQUESTS': 16,
         "DOWNLOAD_DELAY": 0.1,
     }
-    
+
     # 默认初始解析函数
     def parse(self, response):
         """ 抓取个人信息 """
@@ -87,7 +87,8 @@ class WeiboSpider(RedisSpider):
         yield information_item
 
         # 获取该用户微博
-        yield Request(url=self.base_url + '/{}/profile?page=1'.format(information_item['_id']), callback=self.parse_tweet,
+        yield Request(url=self.base_url + '/{}/profile?page=1'.format(information_item['_id']),
+                      callback=self.parse_tweet,
                       priority=1)
 
         # 获取关注列表
@@ -152,6 +153,7 @@ class WeiboSpider(RedisSpider):
                     if '转发理由:' in all_content_text:
                         all_content_text = all_content_text.split('转发理由:')[1]
                     all_content_text = all_content_text.split('\xa0', maxsplit=1)[0]
+                    all_content_text = all_content_text.split(':')[1]
                     tweet_item['content'] = all_content_text.strip()
                     yield tweet_item
 
@@ -169,6 +171,7 @@ class WeiboSpider(RedisSpider):
         content_node = tree_node.xpath('//*[@id="M_"]/div[1]')[0]
         all_content_text = content_node.xpath('string(.)').split(':', maxsplit=1)[1]
         all_content_text = all_content_text.split('\xa0')[0]
+        all_content_text = all_content_text.split(':')[1]
         tweet_item['content'] = all_content_text.strip()
         yield tweet_item
 
