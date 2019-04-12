@@ -1,2 +1,4 @@
 ghostdriver.log
 captcha.png
+.vscode/
+*.pyc
