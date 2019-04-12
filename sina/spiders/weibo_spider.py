@@ -122,7 +122,7 @@ class WeiboSpider(Spider):
                 tweet_item['crawl_time'] = int(time.time())
                 tweet_repost_url = tweet_node.xpath('.//a[contains(text(),"转发[")]/@href')[0]
                 user_tweet_id = re.search(r'/repost/(.*?)\?uid=(\d+)', tweet_repost_url)
-                tweet_item['weibo_url'] = 'https://weibo.com/{}/{}'.format(user_tweet_id.group(2),
+                tweet_item['weibo_url'] = 'https://weibo.cn/{}/{}'.format(user_tweet_id.group(2),
                                                                            user_tweet_id.group(1))
                 tweet_item['user_id'] = user_tweet_id.group(2)
                 tweet_item['_id'] = '{}_{}'.format(user_tweet_id.group(2), user_tweet_id.group(1))
