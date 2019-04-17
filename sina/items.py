@@ -11,6 +11,7 @@ class TweetsItem(Item):
     repost_num = Field()  # 转发数
     comment_num = Field()  # 评论数
     content = Field()  # 微博内容
+    repost_reason = Field()  # 转发理由
     user_id = Field()  # 发表该微博用户的id
     crawl_time = Field()  # 抓取时间戳
 

@@ -142,6 +142,24 @@ class WeiboSpider(Spider):
                     './/a[contains(text(),"评论[") and not(contains(text(),"原文"))]/text()')[-1]
                 tweet_item['comment_num'] = int(re.search('\d+', comment_num).group())
 
+                # divs[0] 原博
+                # divs[1] 图片
+                # divs[2] 转发理由
+                divs = tweet_node.xpath('.//div')
+                children = divs[-1].getchildren()
+                if len(divs) > 1 and children[0].tag == 'span' and children[0].text == '转发理由:':
+                    all_content_text = ''
+                    for child in children:
+                        if child.tag == 'a' and child.text.startswith('赞'):
+                            break
+                        if child.tag == 'img' and 'emoticon' in child.attrib['src']:
+                            all_content_text += child.attrib['alt']
+                        elif child.tag == 'a':
+                            all_content_text += child.text.strip()
+                        if child.tail:
+                            all_content_text += child.tail.strip()
+                    tweet_item['repost_reason'] = all_content_text.strip()
+
                 # 检测由没有阅读全文:
                 all_content_link = tweet_node.xpath('.//a[text()="全文" and contains(@href,"ckAll=1")]')
                 if all_content_link:
@@ -150,13 +168,6 @@ class WeiboSpider(Spider):
                                   priority=1)
 
                 else:
-                    all_content_text = tweet_node.xpath('string(.)')
-                    if '转发理由:' in all_content_text:
-                        all_content_text = all_content_text.split('转发理由:')[1]
-                    all_content_text = all_content_text.split('\xa0', maxsplit=1)[0]
-                    if ':' in all_content_text:
-                        all_content_text = all_content_text.split(':')[1]
-                    tweet_item['content'] = all_content_text.strip()
                     yield tweet_item
 
                 # 抓取该微博的评论信息
