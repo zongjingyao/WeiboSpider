@@ -146,11 +146,13 @@ class WeiboSpider(Spider):
                 # divs[1] 图片
                 # divs[2] 转发理由
                 divs = tweet_node.xpath('.//div')
+                is_repost = False
                 children = divs[-1].getchildren()
                 if len(divs) > 1 and children[0].tag == 'span' and children[0].text == '转发理由:':
                     all_content_text = ''
+                    is_repost = True
                     for child in children:
-                        if child.tag == 'a' and child.text.startswith('赞'):
+                        if child.tag in ['span', 'a'] and child.text and child.text.startswith('赞'):
                             break
                         if child.tag == 'img' and 'emoticon' in child.attrib['src']:
                             all_content_text += child.attrib['alt']
@@ -158,7 +160,7 @@ class WeiboSpider(Spider):
                             all_content_text += child.text.strip()
                         if child.tail:
                             all_content_text += child.tail.strip()
-                    tweet_item['repost_reason'] = all_content_text.strip()
+                    tweet_item['content'] = all_content_text.strip()
 
                 # 检测由没有阅读全文:
                 all_content_link = tweet_node.xpath('.//a[text()="全文" and contains(@href,"ckAll=1")]')
@@ -168,6 +170,25 @@ class WeiboSpider(Spider):
                                   priority=1)
 
                 else:
+                    all_content_text = ''
+                    key = 'original_content' if is_repost else 'content'
+                    for child in divs[0].getchildren()[1 if is_repost else 0:]:
+                        if child.tag in ['span', 'a'] and child.text and child.text.startswith('赞'):
+                            break
+                        if child.tag == 'a':
+                            break
+                        if child.text:
+                            all_content_text += child.text.strip()
+                        for grandchild in child.getchildren():
+                            if grandchild.tail:
+                                all_content_text += grandchild.tail.strip()
+                            if grandchild.tag == 'img' and 'emoticon' in grandchild.attrib['src']:
+                                all_content_text += grandchild.attrib['alt']
+                        if child.tail:
+                            all_content_text += child.tail.strip()
+                    if all_content_text.endswith('['):
+                        all_content_text = all_content_text[:-1]
+                    tweet_item[key] = all_content_text.strip()
                     yield tweet_item
 
                 # 抓取该微博的评论信息
