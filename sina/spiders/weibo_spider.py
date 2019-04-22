@@ -162,16 +162,16 @@ class WeiboSpider(Spider):
                             all_content_text += child.tail.strip()
                     tweet_item['content'] = all_content_text.strip()
 
+                key = 'original_content' if is_repost else 'content'
                 # 检测由没有阅读全文:
                 all_content_link = tweet_node.xpath('.//a[text()="全文" and contains(@href,"ckAll=1")]')
                 if all_content_link:
                     all_content_url = self.base_url + all_content_link[0].xpath('./@href')[0]
-                    yield Request(all_content_url, callback=self.parse_all_content, meta={'item': tweet_item},
+                    yield Request(all_content_url, callback=self.parse_all_content, meta={'item': tweet_item, 'key': key},
                                   priority=1)
 
                 else:
                     all_content_text = ''
-                    key = 'original_content' if is_repost else 'content'
                     for child in divs[0].getchildren()[1 if is_repost else 0:]:
                         if child.tag in ['span', 'a'] and child.text and child.text.startswith('赞'):
                             break
@@ -207,7 +207,7 @@ class WeiboSpider(Spider):
         all_content_text = all_content_text.split('\xa0')[0]
         if ':' in all_content_text:
             all_content_text = all_content_text.split(':')[1]
-        tweet_item['content'] = all_content_text.strip()
+        tweet_item[response.meta['key']] = all_content_text.strip()
         yield tweet_item
 
     def parse_follow(self, response):
