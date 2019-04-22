@@ -270,19 +270,37 @@ class WeiboSpider(Spider):
                 for page_num in range(2, all_page + 1):
                     page_url = response.url.replace('page=1', 'page={}'.format(page_num))
                     yield Request(page_url, self.parse_comment, dont_filter=True, meta=response.meta)
-        selector = Selector(response)
-        comment_nodes = selector.xpath('//div[@class="c" and contains(@id,"C_")]')
+        tree_node = etree.HTML(response.body)
+        comment_nodes = tree_node.xpath('//div[@class="c" and contains(@id,"C_")]')
         for comment_node in comment_nodes:
-            comment_user_url = comment_node.xpath('.//a[contains(@href,"/u/")]/@href').extract_first()
+            comment_user_url = comment_node.xpath('.//a[contains(@href,"/u/")]/@href')
             if not comment_user_url:
                 continue
             comment_item = CommentItem()
             comment_item['crawl_time'] = int(time.time())
             comment_item['weibo_url'] = response.meta['weibo_url']
-            comment_item['comment_user_id'] = re.search(r'/u/(\d+)', comment_user_url).group(1)
-            comment_item['content'] = comment_node.xpath('.//span[@class="ctt"]').xpath('string(.)').extract_first()
-            comment_item['_id'] = comment_node.xpath('./@id').extract_first()
-            created_at = comment_node.xpath('.//span[@class="ct"]/text()').extract_first()
+            comment_item['comment_user_id'] = re.search(r'/u/(\d+)', comment_user_url[0]).group(1)
+            all_content_text = ''
+            for child in comment_node.getchildren():
+                if child.tag == 'a' and child.text == '举报':
+                    break
+                if child.tag == 'img' and 'emoticon' in child.attrib['src']:
+                    all_content_text += child.attrib['alt']
+                if child.text:
+                    all_content_text += child.text.strip()
+                if child.tail:
+                    all_content_text += child.tail.strip()
+                if child.tag == 'span' and child.attrib['class'] == 'ctt':
+                    for grandchild in child.getchildren():
+                        if grandchild.text:
+                            all_content_text += grandchild.text.strip()
+                        if grandchild.tail:
+                            all_content_text += grandchild.tail.strip()
+                        if grandchild.tag == 'img' and 'emoticon' in grandchild.attrib['src']:
+                            all_content_text += grandchild.attrib['alt']
+            comment_item['content'] = all_content_text.strip()
+            comment_item['_id'] = comment_node.xpath('./@id')[0]
+            created_at = comment_node.xpath('.//span[@class="ct"]/text()')[0]
             comment_item['created_at'] = time_fix(created_at.split('\xa0')[0])
             yield comment_item
 
