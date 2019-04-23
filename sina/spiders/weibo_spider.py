@@ -17,6 +17,7 @@ class WeiboSpider(Spider):
     base_url = "https://weibo.cn"
 
     def start_requests(self):
+        self.user_ids_cache = {}
         start_uids = [
             '2803301701',  # 人民日报
             '1699432410'  # 新华社
@@ -273,13 +274,9 @@ class WeiboSpider(Spider):
         tree_node = etree.HTML(response.body)
         comment_nodes = tree_node.xpath('//div[@class="c" and contains(@id,"C_")]')
         for comment_node in comment_nodes:
-            comment_user_url = comment_node.xpath('.//a[contains(@href,"/u/")]/@href')
-            if not comment_user_url:
-                continue
             comment_item = CommentItem()
             comment_item['crawl_time'] = int(time.time())
             comment_item['weibo_url'] = response.meta['weibo_url']
-            comment_item['comment_user_id'] = re.search(r'/u/(\d+)', comment_user_url[0]).group(1)
             all_content_text = ''
             for child in comment_node.getchildren():
                 if child.tag == 'a' and child.text == '举报':
@@ -302,8 +299,27 @@ class WeiboSpider(Spider):
             comment_item['_id'] = comment_node.xpath('./@id')[0]
             created_at = comment_node.xpath('.//span[@class="ct"]/text()')[0]
             comment_item['created_at'] = time_fix(created_at.split('\xa0')[0])
+
+            href = comment_node.getchildren()[0].attrib['href']
+            href_parts = href.split('/')
+            if len(href_parts) == 3 and href_parts[1] == 'u':
+                comment_item['comment_user_id'] = href_parts[2]
+            elif href_parts[-1] in self.user_ids_cache.keys():
+                comment_item['comment_user_id'] = self.user_ids_cache[href_parts[-1]]
+            else:
+                page_url = self.base_url + href
+                yield Request(page_url, self.parse_commnet_user_id, dont_filter=True, meta={'comment_item':comment_item})
+            
             yield comment_item
 
+    def parse_commnet_user_id(self, response):
+        tree_node = etree.HTML(response.body)
+        follow_node = tree_node.xpath('.//a[contains(text(),"关注") and contains(@href,"/follow")]')[0]
+        comment_user_id = re.findall('(\d+)/follow', follow_node.attrib['href'])[0]
+        comment_item = response.meta['comment_item']
+        comment_item['comment_user_id'] = comment_user_id
+        self.user_ids_cache[response.url.split('/')[-1]] = comment_user_id
+        yield comment_item
 
 if __name__ == "__main__":
     process = CrawlerProcess(get_project_settings())
