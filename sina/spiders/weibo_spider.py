@@ -309,6 +309,7 @@ class WeiboSpider(Spider):
             else:
                 page_url = self.base_url + href
                 yield Request(page_url, self.parse_commnet_user_id, dont_filter=True, meta={'comment_item':comment_item})
+                continue
             
             yield comment_item
 
