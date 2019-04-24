@@ -300,7 +300,7 @@ class WeiboSpider(Spider):
             created_at = comment_node.xpath('.//span[@class="ct"]/text()')[0]
             comment_item['created_at'] = time_fix(created_at.split('\xa0')[0])
 
-            href = comment_node.getchildren()[0].attrib['href']
+            href = comment_node.xpath('./a')[0].attrib['href']
             href_parts = href.split('/')
             if len(href_parts) == 3 and href_parts[1] == 'u':
                 comment_item['comment_user_id'] = href_parts[2]
